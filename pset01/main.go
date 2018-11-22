@@ -24,6 +24,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+    "math/rand"
 )
 
 func main() {
@@ -222,7 +223,17 @@ func GenerateKey() (SecretKey, PublicKey, error) {
 
 	// Your code here
 	// ===
-
+    for i := 0; i < 256; i++ {
+        //var zp = make([]byte, 32)
+        var _, e = rand.Read(sec.ZeroPre[i][:])
+        if (e != nil) { return sec, pub, e }
+        _, e = rand.Read(sec.OnePre[i][:])
+        if (e != nil) { return sec, pub, e }
+    }
+    for i := 0; i < 256; i++ {
+        pub.ZeroHash[i] = sha256.Sum256(sec.ZeroPre[i][:])
+        pub.OneHash[i] = sha256.Sum256(sec.OnePre[i][:])
+    }
 	// ===
 	return sec, pub, nil
 }
@@ -233,7 +244,14 @@ func Sign(msg Message, sec SecretKey) Signature {
 
 	// Your code here
 	// ===
-
+    var i uint32
+    for i = 0; i < 256; i++ {
+        if ((1 << i) & (msg[:][i / 32] & (1 << (i % 32))) == 0) {
+            sig.Preimage[i] = sec.ZeroPre[i]
+        } else {
+            sig.Preimage[i] = sec.OnePre[i]
+        }
+    }
 	// ===
 	return sig
 }
@@ -244,7 +262,18 @@ func Verify(msg Message, pub PublicKey, sig Signature) bool {
 
 	// Your code here
 	// ===
-
+    var i uint32
+    for i = 0; i < 256; i++ {
+        if ((1 << i) & (msg[:][i / 32] & (1 << (i % 32))) == 0) {
+            if (pub.ZeroHash[i] != sha256.Sum256(sig.Preimage[i][:])) {
+                return false
+            }
+        } else {
+            if (pub.OneHash[i] != sha256.Sum256(sig.Preimage[i][:])) {
+                return false
+            }
+        }
+    }
 	// ===
 
 	return true
